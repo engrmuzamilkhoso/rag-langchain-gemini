@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Payments Support Assistant</title>
+<style>
+  :root {
+    --bg: #f3f6fb; --panel: #ffffff; --panel-2: #f7f9fc; --text: #0f1b33; --muted: #64708a; --border: #e2e8f2;
+    --navy: #0a2463; --navy-2: #133a8a; --gold: #c9a227; --gold-2: #e8c766;
+    --brand: #0a2463; --brand-2: #1e4fb5; --brand-soft: #e9effb; --user-text: #ffffff;
+    --bot: #f1f4f9; --chip: #fdf6e3; --chip-text: #8a6d12;
+    --ok: #15803d; --ok-soft: #dcfce7; --warn: #b45309; --warn-soft: #fef3c7; --idle-soft: #eef1f6;
+    --shadow: 0 1px 2px rgba(10,36,99,.05), 0 10px 28px rgba(10,36,99,.08);
+    --toast-bg: rgba(255,255,255,.92); --toast-border: rgba(10,36,99,.08);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  code { font: 12.5px ui-monospace, Menlo, Consolas, monospace; background: var(--panel-2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 5px; }
+
+  /* ── Header (bank top bar) ── */
+  .topbar { background: linear-gradient(120deg, var(--navy) 0%, var(--navy-2) 100%); color: #fff; border-bottom: 3px solid var(--gold); }
+  header { max-width: 1160px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 14px; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--gold), var(--gold-2)); display: grid; place-items: center; color: var(--navy); flex: none; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+  header h1 { margin: 0; font-size: 19px; letter-spacing: -.01em; }
+  header p { margin: 2px 0 0; color: rgba(255,255,255,.7); font-size: 13px; }
+  header .spacer { flex: 1; }
+  .secure { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--gold-2); border: 1px solid rgba(232,199,102,.4); border-radius: 999px; padding: 5px 11px; white-space: nowrap; }
+
+  /* ── Layout ── */
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 18px; max-width: 1160px; margin: 0 auto; padding: 18px 24px 24px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+
+  /* ── Chat ── */
+  .chat { display: flex; flex-direction: column; height: calc(100vh - 120px); min-height: 540px; overflow: hidden; }
+  .chat-head { background: var(--panel-2); }
+  .chat-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .chat-head .avatar { width: 34px; height: 34px; }
+  .chat-head strong { display: block; font-size: 14px; }
+  .chat-head small { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .chat-head small::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .chat-head .spacer { flex: 1; }
+  .ghost { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 9px; padding: 6px 11px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .ghost:hover { background: var(--panel-2); }
+
+  .messages { flex: 1; overflow-y: auto; padding: 22px 18px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
+  .row { display: flex; gap: 10px; align-items: flex-end; animation: rise .25s ease-out; }
+  .row.user { justify-content: flex-end; }
+  .avatar { width: 30px; height: 30px; border-radius: 10px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; display: grid; place-items: center; flex: none; font-size: 13px; font-weight: 700; }
+  .msg { max-width: 76%; display: flex; flex-direction: column; gap: 6px; }
+  .row.user .msg { align-items: flex-end; }
+  .bubble { padding: 10px 14px; border-radius: 16px; white-space: pre-wrap; word-wrap: break-word; }
+  .user .bubble { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: var(--user-text); border-bottom-right-radius: 5px; }
+  .bot .bubble { background: var(--bot); border-bottom-left-radius: 5px; }
+  .meta { font-size: 11px; color: var(--muted); padding: 0 4px; }
+  .tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tool { background: var(--chip); color: var(--chip-text); font: 11.5px ui-monospace, Menlo, Consolas, monospace; padding: 3px 8px; border-radius: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .pdf { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; background: var(--panel); color: var(--brand); border: 1px solid var(--brand); border-radius: 10px; padding: 7px 12px; font-size: 13px; font-weight: 600; text-decoration: none; }
+  .pdf:hover { background: var(--brand-soft); }
+
+  .dots { display: inline-flex; gap: 4px; padding: 14px 16px; background: var(--bot); border-radius: 16px; border-bottom-left-radius: 5px; }
+  .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .4; animation: blink 1.2s infinite; }
+  .dots span:nth-child(2) { animation-delay: .15s; }
+  .dots span:nth-child(3) { animation-delay: .3s; }
+
+  .suggestions { display: flex; gap: 8px; padding: 0 18px 12px; overflow-x: auto; scrollbar-width: none; }
+  .suggestions button { flex: none; background: var(--brand-soft); color: var(--brand); border: 1px solid transparent; border-radius: 999px; padding: 6px 13px; font-size: 13px; cursor: pointer; transition: border-color .15s; }
+  .suggestions button:hover { border-color: var(--brand); }
+
+  form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); background: var(--panel); }
+  .input-wrap { flex: 1; display: flex; align-items: center; background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 0 6px 0 14px; transition: border-color .15s, box-shadow .15s; }
+  .input-wrap:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  input { flex: 1; padding: 12px 0; border: 0; background: transparent; color: var(--text); font-size: 15px; outline: none; min-width: 0; }
+  button.send { width: 38px; height: 38px; border-radius: 10px; border: 0; background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; display: grid; place-items: center; cursor: pointer; flex: none; }
+  button:disabled { opacity: .5; cursor: default; }
+
+  /* ── Side panel ── */
+  aside { display: flex; flex-direction: column; gap: 16px; }
+  aside .card { padding: 16px; }
+  aside h2 { margin: 0 0 12px; font-size: 12px; color: var(--navy); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; gap: 8px; }
+  aside h2::before { content: ""; width: 3px; height: 12px; border-radius: 2px; background: var(--gold); }
+  .status { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--idle-soft); color: var(--muted); }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .status.pending { background: var(--warn-soft); color: var(--warn); }
+  .status.pending::before { animation: pulse 1.4s infinite; }
+  .status.verified { background: var(--ok-soft); color: var(--ok); }
+  .note { color: var(--muted); font-size: 12px; margin: 10px 0 0; }
+
+  .inbox { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+  .sms { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; font-size: 13px; }
+  .sms small { color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 2px; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 14px 0; }
+
+  ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 8px; }
+  ol.steps li { counter-increment: s; display: flex; gap: 10px; font-size: 13px; color: var(--muted); align-items: baseline; }
+  ol.steps li::before { content: counter(s); flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+
+  /* ── Push notification ── */
+  .toasts { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: min(400px, calc(100vw - 24px)); z-index: 50; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast { pointer-events: auto; background: var(--toast-bg); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid var(--toast-border); border-radius: 20px; box-shadow: 0 12px 40px rgba(0,0,0,.18); padding: 12px 14px; position: relative; overflow: hidden; touch-action: none; user-select: none;
+    animation: drop .5s cubic-bezier(.2, 1.3, .4, 1) both; transition: transform .3s ease, opacity .3s ease; }
+  .toast.leaving { transform: translateY(-140%); opacity: 0; }
+  .toast-top { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .toast-top .app { width: 20px; height: 20px; border-radius: 6px; background: linear-gradient(135deg, var(--navy), var(--navy-2)); display: grid; place-items: center; color: var(--gold-2); }
+  .toast-top .name { font-weight: 600; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; }
+  .toast-top .time { margin-left: auto; }
+  .toast-top .x { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px; }
+  .toast-title { font-weight: 600; font-size: 14px; margin: 6px 0 2px; }
+  .toast-body { font-size: 14px; }
+  .otp { font: 700 15px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .12em; background: var(--brand-soft); color: var(--brand); padding: 1px 6px; border-radius: 6px; }
+  .toast-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .toast-actions button { flex: 1; border: 0; border-radius: 10px; padding: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--bot); color: var(--text); }
+  .toast-actions button.fill { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; }
+  .toast .bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--gold); width: 100%; transform-origin: left; animation: shrink linear forwards; }
+  .toast:hover .bar { animation-play-state: paused; }
+
+  @keyframes drop { from { transform: translateY(-140%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes shrink { to { transform: scaleX(0); } }
+  @keyframes rise { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes blink { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 currentColor; } 100% { box-shadow: 0 0 0 6px transparent; } }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; padding: 12px 16px 16px; }
+    header { padding: 12px 16px; }
+    header p, .secure span { display: none; }
+    .chat { height: 72vh; min-height: 460px; }
+    .msg { max-width: 88%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<div class="topbar">
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 21h18"/></svg>
+    </div>
+    <div>
+      <h1>Payments Support Assistant</h1>
+      <p>RAG over policy documents + an AI agent with OTP verification · LangChain.js · PostgreSQL + pgvector · Google Gemini</p>
+    </div>
+    <span class="spacer"></span>
+    <span class="secure">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <span>Secure session</span>
+    </span>
+  </header>
+</div>
+
+<div class="layout">
+  <!-- ── The chat ── -->
+  <section class="card chat">
+    <div class="chat-head">
+      <div class="avatar" aria-hidden="true">AI</div>
+      <div>
+        <strong>Support Assistant</strong>
+        <small>Online</small>
+      </div>
+      <span class="spacer"></span>
+      <button class="ghost" id="reset" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New chat
+      </button>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="suggestions" id="suggestions">
+      <button type="button">How long do card refunds take?</button>
+      <button type="button">Why is my merchant payout stuck?</button>
+      <button type="button">I want my statement</button>
+      <button type="button">Do you support crypto payments?</button>
+    </div>
+    <form id="form">
+      <div class="input-wrap">
+        <input id="input" placeholder="Type your message…" autocomplete="off" />
+      </div>
+      <button class="send" id="send" aria-label="Send">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+      </button>
+    </form>
+  </section>
+
+  <!-- ── The side panel ── -->
+  <aside>
+    <div class="card">
+      <h2>Session</h2>
+      <span class="status" id="status">Not verified</span>
+      <p class="note">Stored on the server, in code. The AI can't change it.</p>
+    </div>
+
+    <div class="card">
+      <h2>Demo phone inbox</h2>
+      <div class="inbox" id="phone"><div class="empty">No messages yet.</div></div>
+      <p class="note">Demo only. Codes arrive as a notification at the top of the screen, never to the AI.</p>
+    </div>
+
+    <div class="card">
+      <h2>Try it</h2>
+      <ol class="steps">
+        <li><span>Ask a policy question → <code>searchPolicy</code></span></li>
+        <li><span>Ask for your statement → it asks for your phone</span></li>
+        <li><span>Phone: <code>03001234567</code></span></li>
+        <li><span>Tap <b>Fill in chat</b> on the OTP notification</span></li>
+        <li><span>Ask for September → <code>getStatement</code></span></li>
+      </ol>
+    </div>
+  </aside>
+</div>
+
+<script>
+  const messages = document.getElementById("messages");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const statusEl = document.getElementById("status");
+  const phone = document.getElementById("phone");
+  const toasts = document.getElementById("toasts");
+
+  const TOAST_MS = 9000;
+  const STORAGE_KEY = "support-chat";
+  const GREETING = "Hi! How can I help you today?";
+  const seenSms = new Set();
+
+  // ── Saved chat (survives page refresh) ──
+  function loadChat() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (saved?.chatId) return saved;
+    } catch {}
+    return { chatId: crypto.randomUUID(), messages: [], session: { state: "anonymous" } };
+  }
+  function saveChat() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(chat)); } catch {}
+  }
+
+  let chat = loadChat();
+  let chatId = chat.chatId;
+  let phoneLoaded = false;
+
+  const timeOf = (date) => new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const maskPhone = (to) => `${to.slice(0, 4)}•••${to.slice(-4)}`;
+  const findCode = (text) => text.match(/\b\d{4,8}\b/)?.[0];
+
+  // ── Add one message to the chat (and save it) ──
+  function addMessage(role, text, toolCalls = [], statement = null) {
+    const entry = { role, text, toolCalls, statement, at: Date.now() };
+    chat.messages.push(entry);
+    saveChat();
+    return renderMessage(entry);
+  }
+
+  // ── Draw one message ──
+  function renderMessage({ role, text, toolCalls = [], statement = null, at }) {
+    const row = document.createElement("div");
+    row.className = `row ${role}`;
+
+    if (role === "bot") {
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = "AI";
+      row.appendChild(avatar);
+    }
+
+    const msg = document.createElement("div");
+    msg.className = "msg";
+
+    if (toolCalls.length) {
+      const tools = document.createElement("div");
+      tools.className = "tools";
+      for (const call of toolCalls) {
+        const chip = document.createElement("span");
+        chip.className = "tool";
+        chip.textContent = `🔧 ${call.name}(${JSON.stringify(call.args)})`;
+        chip.title = chip.textContent;
+        tools.appendChild(chip);
+      }
+      msg.appendChild(tools);
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+    msg.appendChild(bubble);
+
+    // Statement fetched → offer it as a PDF
+    if (statement) {
+      const link = document.createElement("a");
+      link.className = "pdf";
+      link.href = `/api/statement.pdf?chatId=${encodeURIComponent(chatId)}&month=${encodeURIComponent(statement.month)}`;
+      link.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
+      link.append(`Download statement (PDF) · ${statement.month}`);
+      msg.appendChild(link);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = timeOf(at);
+    msg.appendChild(meta);
+
+    row.appendChild(msg);
+    messages.appendChild(row);
+    messages.scrollTop = messages.scrollHeight;
+    return row;
+  }
+
+  function showTyping() {
+    const row = document.createElement("div");
+    row.className = "row bot";
+    row.innerHTML = `<div class="avatar">AI</div><div class="dots"><span></span><span></span><span></span></div>`;
+    messages.appendChild(row);
+    messages.scrollTop = messages.scrollHeight;
+    return row;
+  }
+
+  // ── Show the session state ──
+  function showStatus(session) {
+    chat.session = session;
+    saveChat();
+    statusEl.className = `status ${session.state}`;
+    statusEl.textContent =
+      session.state === "verified" ? `Verified · ${session.name}` :
+      session.state === "pending" ? "Code sent · waiting" : "Not verified";
+  }
+
+  // ── Text with the OTP code highlighted ──
+  function renderSmsText(target, text) {
+    const code = findCode(text);
+    if (!code) { target.textContent = text; return; }
+    const i = text.indexOf(code);
+    const otp = document.createElement("span");
+    otp.className = "otp";
+    otp.textContent = code;
+    target.append(text.slice(0, i), otp, text.slice(i + code.length));
+  }
+
+  // ── Push notification from the top ──
+  function dismissToast(toast) {
+    if (toast.classList.contains("leaving")) return;
+    toast.classList.add("leaving");
+    setTimeout(() => toast.remove(), 300);
+  }
+
+  function pushNotification(sms) {
+    const code = findCode(sms.text);
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.setAttribute("role", "alert");
+    toast.innerHTML = `
+      <div class="toast-top">
+        <span class="app"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/></svg></span>
+        <span class="name">Bank alert</span>
+        <span class="time">now</span>
+        <button class="x" aria-label="Dismiss">×</button>
+      </div>
+      <div class="toast-title"></div>
+      <div class="toast-body"></div>
+      <div class="bar" style="animation-duration:${TOAST_MS}ms"></div>`;
+    toast.querySelector(".toast-title").textContent = `To ${maskPhone(sms.to)}`;
+    renderSmsText(toast.querySelector(".toast-body"), sms.text);
+
+    if (code) {
+      const actions = document.createElement("div");
+      actions.className = "toast-actions";
+      const copy = document.createElement("button");
+      copy.textContent = "Copy code";
+      copy.onclick = async () => {
+        try { await navigator.clipboard.writeText(code); copy.textContent = "Copied ✓"; } catch { copy.textContent = code; }
+      };
+      const fill = document.createElement("button");
+      fill.className = "fill";
+      fill.textContent = "Fill in chat";
+      fill.onclick = () => { input.value = code; input.focus(); dismissToast(toast); };
+      actions.append(copy, fill);
+      toast.insertBefore(actions, toast.querySelector(".bar"));
+    }
+
+    toast.querySelector(".x").onclick = () => dismissToast(toast);
+    toast.querySelector(".bar").addEventListener("animationend", () => dismissToast(toast));
+
+    // Swipe up to dismiss
+    let startY = null;
+    toast.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      startY = e.clientY;
+      toast.style.transition = "none";
+      toast.setPointerCapture(e.pointerId);
+    });
+    toast.addEventListener("pointermove", (e) => {
+      if (startY === null) return;
+      const dy = Math.min(0, e.clientY - startY);
+      toast.style.transform = `translateY(${dy}px)`;
+    });
+    toast.addEventListener("pointerup", (e) => {
+      if (startY === null) return;
+      const dy = e.clientY - startY;
+      startY = null;
+      toast.style.transition = "";
+      toast.style.transform = "";
+      if (dy < -40) dismissToast(toast);
+    });
+
+    toasts.prepend(toast);
+    navigator.vibrate?.(80);
+  }
+
+  // ── Refresh the demo phone ──
+  async function refreshPhone() {
+    const list = await fetch(`/api/demo/sms?chatId=${encodeURIComponent(chatId)}`).then((r) => r.json()).catch(() => null);
+    if (!Array.isArray(list)) return;
+
+    for (const sms of list) {
+      const key = `${sms.sentAt}|${sms.to}|${sms.text}`;
+      if (seenSms.has(key)) continue;
+      seenSms.add(key);
+      // Don't replay old messages as notifications on first page load
+      if (phoneLoaded) pushNotification(sms);
+    }
+    phoneLoaded = true;
+
+    phone.innerHTML = list.length ? "" : `<div class="empty">No messages yet.</div>`;
+    for (const sms of list.slice().reverse()) {
+      const item = document.createElement("div");
+      item.className = "sms";
+      const head = document.createElement("small");
+      head.append(`To ${maskPhone(sms.to)}`, Object.assign(document.createElement("span"), { textContent: timeOf(sms.sentAt) }));
+      const body = document.createElement("div");
+      renderSmsText(body, sms.text);
+      item.append(head, body);
+      phone.appendChild(item);
+    }
+  }
+
+  // ── Send a message to the agent ──
+  async function send(text) {
+    if (!text.trim()) return;
+    addMessage("user", text);
+    input.value = "";
+    sendBtn.disabled = true;
+    const typing = showTyping();
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId, message: text }),
+      });
+      const data = await res.json();
+      typing.remove();
+
+      if (!res.ok) {
+        addMessage("bot", data.error ?? "Something went wrong.");
+      } else {
+        addMessage("bot", data.reply, data.toolCalls, data.statement);
+        showStatus(data.session);
+        refreshPhone();
+      }
+    } catch {
+      typing.remove();
+      addMessage("bot", "Can't reach the server. Is it running?");
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    send(input.value);
+  });
+
+  document.querySelectorAll("#suggestions button").forEach((button) => {
+    button.addEventListener("click", () => send(button.textContent));
+  });
+
+  document.getElementById("reset").addEventListener("click", async () => {
+    await fetch("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chatId }) }).catch(() => {});
+    chatId = crypto.randomUUID();
+    chat = { chatId, messages: [], session: { state: "anonymous" } };
+    messages.innerHTML = "";
+    showStatus(chat.session);
+    addMessage("bot", GREETING);
+  });
+
+  // ── Restore the saved chat, or start a new one ──
+  showStatus(chat.session);
+  if (chat.messages.length) {
+    messages.style.scrollBehavior = "auto";
+    chat.messages.forEach(renderMessage);
+    messages.style.scrollBehavior = "";
+  } else {
+    addMessage("bot", GREETING);
+  }
+
+  refreshPhone();
+  setInterval(refreshPhone, 3000);
+  input.focus();
+</script>
+</body>
+</html>
